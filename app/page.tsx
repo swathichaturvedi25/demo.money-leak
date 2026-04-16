@@ -279,7 +279,6 @@ export default function Home() {
               style={{
                 marginTop: "10px",
                 background: "#00FF94",
-                border: "1px solid rgba(255,255,255,0.05)",
                 color: "#000",
                 padding: "6px 12px",
                 borderRadius: "6px",
@@ -314,7 +313,6 @@ export default function Home() {
               style={{
                 marginTop: "10px",
                 background: "#00FF94",
-                border: "1px solid rgba(255,255,255,0.05)",
                 color: "#000",
                 padding: "6px 12px",
                 borderRadius: "6px",
