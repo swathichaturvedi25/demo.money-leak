@@ -9,6 +9,27 @@ export default function Signup() {
     const [firstName, setFirstName] = useState("");
 
     async function handleSignup() {
+        if (!firstName) {
+            setMessage("Please enter your first name.");
+            return;
+        }
+        if (!email) {
+            setMessage("Please enter your email.");
+            return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setMessage("Please enter a valid email address.");
+            return;
+        }
+        if (!password) {
+            setMessage("Please enter your password.");
+            return;
+        }
+        if (password.length < 6) {
+            setMessage("Password must be at least 6 characters.");
+            return;
+        }
+
         const { error } = await supabase.auth.signUp({
             email,
             password,
@@ -61,6 +82,13 @@ export default function Signup() {
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => {
+                    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        setMessage("Please enter a valid email address.");
+                    } else {
+                        setMessage("");
+                    }
+                }}
                 style={{
                     display: "block",
                     width: "100%",
@@ -135,7 +163,7 @@ export default function Signup() {
                 <p style={{
                     marginTop: "16px",
                     fontSize: "13px",
-                    color: "#00DF82",
+                    color: message.includes("created") ? "#00DF82" : "#FF6B6B",
                     textAlign: "center",
                 }}>{message}</p>
             )}

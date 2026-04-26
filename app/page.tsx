@@ -326,7 +326,7 @@ export default function Home() {
               <button
                 onClick={() => {
                   setSaved(prev => prev + tx.amount);
-                  setTransactions(prev => prev.filter((_, i) => i !== index));
+                  setTransactions(prev => prev.filter(t => t.id !== tx.id));
                 }}
                 style={{
                   marginTop: "10px",

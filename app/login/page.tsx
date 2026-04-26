@@ -8,6 +8,15 @@ export default function Login() {
   const [message, setMessage] = useState("");
 
   async function handleLogin() {
+    if (!email) {
+      setMessage("Please enter your email.");
+      return;
+    }
+    if (!password) {
+      setMessage("Please enter your password.");
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -108,7 +117,7 @@ export default function Login() {
         <p style={{
           marginTop: "16px",
           fontSize: "13px",
-          color: "#FF6B6B",
+          color: message.includes("created") ? "#00DF82" : "#FF6B6B",
           textAlign: "center",
         }}>{message}</p>
       )}
