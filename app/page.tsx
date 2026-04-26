@@ -1,5 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "./lib/supabase";
+import { seedTransactions } from "./lib/seedTransactions";
+import { summariseByCategory, calculateMonthlyLeak } from "./lib/classify";
 export default function Home() {
   const [saved, setSaved] = useState(0);
   const [showRandomApp, setShowRandomApp] = useState(true);
@@ -10,14 +13,62 @@ export default function Home() {
   const [expenses, setExpenses] = useState<
     { name: string; amount: number }[]
   >([]);
+  const [user, setUser] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [monthlyLeak, setMonthlyLeak] = useState(0);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        window.location.href = "/login";
+      } else {
+        setUser(session.user);
+        fetchTransactions(session.user.id);
+      }
+    });
+    window.addEventListener('focus', () => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) fetchTransactions(session.user.id);
+      });
+    });
+  }, []);
+  async function fetchTransactions(userId: string) {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("date", { ascending: false });
+
+    if (error) {
+      console.error("Fetch error:", error.message);
+      return;
+    }
+    // Deduplicate by merchant — keep only the latest entry per merchant
+    const seen = new Set();
+    const deduplicated = (data || []).filter(tx => {
+      if (seen.has(tx.merchant.toLowerCase())) return false;
+      seen.add(tx.merchant.toLowerCase());
+      return true;
+    });
+
+    setTransactions(deduplicated);
+    const leak = calculateMonthlyLeak(data || []);
+    setMonthlyLeak(leak);
+  }
+  async function handleSeed() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const success = await seedTransactions(session.user.id);
+    if (success) alert("Transactions seeded! Refresh to see them.");
+  }
   return (
     <main
       style={{
         padding: "20px",
-        background: "#0B0B0B",
+        background: "#030F0F",
         minHeight: "100vh",
-        color: "#00FF94",
-        fontFamily: "sans-serif",
+        color: "#FFFFFF",
+        fontFamily: "Inter, sans-serif",
         maxWidth: "420px",
         margin: "0 auto",
       }}
@@ -34,7 +85,7 @@ export default function Home() {
           style={{
             background: "transparent",
             border: "none",
-            color: "#00FF94",
+            color: "#00DF82",
             fontSize: "20px",
             cursor: "pointer",
           }}
@@ -44,9 +95,9 @@ export default function Home() {
 
         <button
           style={{
-            background: "#1A1A1A",
-            border: "1px solid #00FF94",
-            color: "#00FF94",
+            background: "#0a1a12",
+            border: "1px solid #00DF82",
+            color: "#00DF82",
             padding: "5px 10px",
             borderRadius: "6px",
             cursor: "pointer",
@@ -58,7 +109,7 @@ export default function Home() {
         <button
           onClick={() => setShowAddBox(true)}
           style={{
-            background: "#00FF94",
+            background: "#00DF82",
             border: "none",
             color: "#000",
             padding: "6px 12px",
@@ -71,19 +122,19 @@ export default function Home() {
         </button>
       </div>
       <div style={{ marginBottom: "10px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: "bold" }}>
+        <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#00DF82", margin: "0 0 4px" }}>
           Money Leak
         </h1>
-        <p style={{ color: "#aaa" }}>Hi, Tanushri S 👋</p>
+        <p style={{ color: "#aaa" }}>Hi {user?.user_metadata?.first_name || user?.email?.split("@")[0]}! 👋</p>
       </div>
       {showAddBox && (
         <div
           style={{
             marginTop: "20px",
             padding: "15px",
-            background: "#1A1A1A",
+            background: "#0a1a12",
             borderRadius: "10px",
-            border: "1px solid #00FF94",
+            border: "1px solid #00DF82",
           }}
         >
           <p style={{ marginBottom: "10px", fontWeight: "bold" }}>
@@ -133,7 +184,7 @@ export default function Home() {
               setShowAddBox(false);
             }}
             style={{
-              background: "#00FF94",
+              background: "#00DF82",
               color: "#000",
               padding: "8px",
               borderRadius: "6px",
@@ -155,20 +206,20 @@ export default function Home() {
         style={{
           marginTop: "30px",
           padding: "20px",
-          background: "#2A0B0B",
+          background: "#0a1a12",
           boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
-          border: "1px solid #FF4D4D",
+          border: "1px solid #FF6B6B",
           borderRadius: "12px",
-          color: "#FF4D4D",
+          color: "#FF6B6B",
           transition: "all 0.3s ease",
         }}
       >
         <h2 style={{ fontSize: "22px" }}>
-          ⚠️ You’re leaking ₹{2067 - saved}/month
+          ⚠️ You're leaking ₹{monthlyLeak - saved}/month
         </h2>
 
         <p style={{ marginTop: "10px", color: "#aaa" }}>
-          ₹{(2067 - saved) * 12}/year
+          ₹{(monthlyLeak - saved) * 12}/year
         </p>
       </div>
       {
@@ -177,7 +228,7 @@ export default function Home() {
             style={{
               marginTop: "20px",
               padding: "15px",
-              background: "#00FF94",
+              background: "#00DF82",
               boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
               border: "1px solid rgba(255,255,255,0.05)",
               color: "#000",
@@ -206,7 +257,7 @@ export default function Home() {
             style={{
               marginTop: "20px",
               padding: "20px",
-              background: "#00FF94",
+              background: "#00DF82",
               boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
               border: "1px solid rgba(255,255,255,0.05)",
               color: "#000",
@@ -224,7 +275,7 @@ export default function Home() {
           <div
             key={index}
             style={{
-              background: "#1A1A1A",
+              background: "#0a1a12",
               padding: "15px",
               borderRadius: "10px",
               border: "1px solid rgba(255,255,255,0.05)",
@@ -244,7 +295,7 @@ export default function Home() {
               }}
               style={{
                 marginTop: "10px",
-                background: "#00FF94",
+                background: "#00DF82",
                 border: "1px solid rgba(255,255,255,0.05)",
                 color: "#000",
                 padding: "6px 12px",
@@ -257,74 +308,81 @@ export default function Home() {
           </div>
         ))}
 
-        {showNetflix && (
-          <div
-            style={{
-              background: "#1A1A1A",
-              border: "1px solid rgba(255,255,255,0.05)",
-              padding: "15px",
-              borderRadius: "10px",
-              marginBottom: "10px",
-              transition: "all 0.3s ease",
-            }}
-          >
-            <p style={{ fontWeight: "600" }}>Netflix</p>
-            <p style={{ color: "#aaa" }}>₹649/month • Used recently</p>
-
-            <button
-              onClick={() => {
-                setSaved((prev) => prev + 649);
-                setShowNetflix(false);
-              }}
+        {transactions
+          .filter(tx => tx.category === "subscription")
+          .map((tx, index) => (
+            <div
+              key={index}
               style={{
-                marginTop: "10px",
-                background: "#00FF94",
-                color: "#000",
-                padding: "6px 12px",
-                borderRadius: "6px",
-                border: "none",
-                cursor: "pointer",
+                background: "#0a1a12",
+                border: "1px solid rgba(255,255,255,0.05)",
+                padding: "15px",
+                borderRadius: "10px",
+                marginBottom: "10px",
               }}
             >
-              ✂️ Stop ₹649
-            </button>
-          </div>
-        )}
-
-        {showRandomApp && (
-          <div
-            style={{
-              background: "#1A1A1A",
-              padding: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.05)",
-              marginBottom: "10px",
-              transition: "all 0.3s ease",
-            }}
-          >
-            <p style={{ fontWeight: "600" }}>Random App</p>
-            <p style={{ color: "#FF4D4D" }}>₹299/month • Not used in 90 days</p>
-
-            <button
-              onClick={() => {
-                setSaved(saved + 299);
-                setShowRandomApp(false);
-              }}
-              style={{
-                marginTop: "10px",
-                background: "#00FF94",
-                color: "#000",
-                padding: "6px 12px",
-                borderRadius: "6px",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              ✂️ Stop ₹299
-            </button>
-          </div>
-        )}
+              <p style={{ fontWeight: "600" }}>{tx.merchant}</p>
+              <p style={{ color: "#aaa" }}>₹{tx.amount}/month</p>
+              <button
+                onClick={() => {
+                  setSaved(prev => prev + tx.amount);
+                  setTransactions(prev => prev.filter((_, i) => i !== index));
+                }}
+                style={{
+                  marginTop: "10px",
+                  background: "#00DF82",
+                  color: "#000",
+                  padding: "6px 12px",
+                  borderRadius: "6px",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                ✂️ Stop ₹{tx.amount}
+              </button>
+            </div>
+          ))
+        }
       </div>
+      <button
+        onClick={handleSeed}
+        style={{
+          background: "transparent",
+          border: "1px solid #03624C",
+          color: "#03624C",
+          padding: "8px 16px",
+          borderRadius: "8px",
+          cursor: "pointer",
+          fontSize: "12px",
+          marginTop: "20px",
+          display: "block",
+          width: "100%",
+        }}
+      >
+        Seed test transactions
+      </button>
+
+      <button
+        onClick={async () => {
+          await supabase.auth.signOut();
+          window.location.href = "/login";
+        }}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "#888888",
+          padding: "4px 0",
+          cursor: "pointer",
+          fontSize: "12px",
+          marginTop: "40px",
+          textDecoration: "underline",
+          display: "block",
+          width: "100%",
+          textAlign: "center",
+        }}
+      >
+        Log Out
+      </button>
     </main >
   );
 }
