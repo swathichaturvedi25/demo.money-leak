@@ -26,11 +26,14 @@ export default function Home() {
         fetchTransactions(session.user.id);
       }
     });
-    window.addEventListener('focus', () => {
+    const handleFocus = () => {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) fetchTransactions(session.user.id);
       });
-    });
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+
   }, []);
   async function fetchTransactions(userId: string) {
     const { data, error } = await supabase
