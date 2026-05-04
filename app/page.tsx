@@ -5,8 +5,6 @@ import { seedTransactions } from "./lib/seedTransactions";
 import { summariseByCategory, calculateMonthlyLeak } from "./lib/classify";
 export default function Home() {
   const [saved, setSaved] = useState(0);
-  const [showRandomApp, setShowRandomApp] = useState(true);
-  const [showNetflix, setShowNetflix] = useState(true);
   const [showAddBox, setShowAddBox] = useState(false);
   const [expenseName, setExpenseName] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
@@ -16,6 +14,10 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [monthlyLeak, setMonthlyLeak] = useState(0);
+  const [recentSaving, setRecentSaving] = useState(0);
+  const [showGoalPrompt, setShowGoalPrompt] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState("");
+  const [goalSet, setGoalSet] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -91,37 +93,66 @@ export default function Home() {
             color: "#00DF82",
             fontSize: "20px",
             cursor: "pointer",
+            lineHeight: "1",
+            padding: "0",
           }}
         >
           ☰
         </button>
 
         <button
+          onClick={async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+            // Now check if they have a consent
+            const { data } = await supabase
+              .from("consents")
+              .select("*")
+              .eq("user_id", session.user.id);
+            if (data && data.length > 0) {
+              // Bank connected → insights
+              window.location.href = "/insights";
+            } else {
+              // Not connected → connect bank
+              window.location.href = "/connect-bank";
+            }
+          }}
           style={{
-            background: "#0a1a12",
-            border: "1px solid #00DF82",
-            color: "#00DF82",
-            padding: "5px 10px",
-            borderRadius: "6px",
+            background: "transparent",
+            border: "none",
+            padding: "0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             cursor: "pointer",
           }}
         >
-          ₹
+          <img src="/MoneyLeakLogo.svg"
+            width="60"
+            height="60"
+            alt="Show me my money!"
+            style={{ display: "block" }}
+          />
         </button>
-
+        
         <button
           onClick={() => setShowAddBox(true)}
           style={{
-            background: "#00DF82",
+            background: "transparent",
             border: "none",
-            color: "#000",
-            padding: "6px 12px",
-            borderRadius: "6px",
-            fontWeight: "bold",
             cursor: "pointer",
+            padding: "0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          +
+          <img src="/coin.svg"
+            width="50"
+            height="50"
+            alt="Add expense"
+            style={{ display: "block", marginTop: "12px", marginRight: "-12px" }}
+          />
         </button>
       </div>
       <div style={{ marginBottom: "10px" }}>
@@ -225,8 +256,73 @@ export default function Home() {
           ₹{(monthlyLeak - saved) * 12}/year
         </p>
       </div>
+      {showGoalPrompt && (
+        <div style={{
+          marginTop: "16px",
+          padding: "16px",
+          background: "#03624C",
+          borderRadius: "14px",
+          border: "1px solid #00DF82",
+        }}>
+          <p style={{ fontSize: "14px", color: "#00DF82", margin: "0 0 4px" }}>
+            Goal Mirror 🪞
+          </p>
+          <p style={{ fontSize: "13px", color: "#fff", margin: "0 0 16px", lineHeight: "1.5" }}>
+            You just freed ₹{recentSaving}/month — that's ₹{recentSaving * 12}/year. Want to put it towards something?
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {["✈️ Travel fund", "🏠 Home / EMI", "🎓 Education", "🆘 Emergency fund", "✨ Custom goal"].map((goal) => (
+              <button
+                key={goal}
+                onClick={() => setSelectedGoal(goal)}
+                style={{
+                  background: selectedGoal === goal ? "#00DF82" : "transparent",
+                  color: selectedGoal === goal ? "#030F0F" : "#00DF82",
+                  border: "1px solid #00DF82",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  textAlign: "left",
+                  transition: "all 0.2s",
+                }}
+              >
+                {goal}
+              </button>
+            ))}
+          </div>
+          {selectedGoal && (
+            <div style={{ marginTop: "16px" }}>
+              <p style={{ fontSize: "13px", color: "#00DF82", margin: "0 0 8px" }}>
+                Great choice! ₹{recentSaving}/month towards {selectedGoal} = ₹{recentSaving * 12} saved by next year.
+              </p>
+              <button
+                onClick={() => {
+                  setShowGoalPrompt(false);
+                  setSelectedGoal("");
+                  setGoalSet(true)
+                }}
+                style={{
+                  background: "#00DF82",
+                  color: "#030F0F",
+                  border: "none",
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  width: "100%",
+                }}
+              >
+                Let's do it! 💪
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {
-        saved > 0 && (
+        saved > 0 && !showGoalPrompt && !goalSet && (
           <div
             style={{
               marginTop: "20px",
@@ -255,7 +351,7 @@ export default function Home() {
       }
       <div style={{ marginTop: "30px" }}>
         <h3 style={{ marginBottom: "10px" }}>Subscriptions</h3>
-        {!showNetflix && !showRandomApp && expenses.length === 0 && (
+        {transactions.filter(tx => tx.category === "subscription").length === 0 && (
           <div
             style={{
               marginTop: "20px",
@@ -329,6 +425,8 @@ export default function Home() {
               <button
                 onClick={() => {
                   setSaved(prev => prev + tx.amount);
+                  setRecentSaving(tx.amount);
+                  setShowGoalPrompt(true);
                   setTransactions(prev => prev.filter(t => t.id !== tx.id));
                 }}
                 style={{
