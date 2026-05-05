@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
     try {
         const { mobile } = await request.json();
+        const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const to = new Date().toISOString();
         console.log("Using credentials:", {
             clientId: process.env.SETU_CLIENT_ID,
             hasSecret: !!process.env.SETU_CLIENT_SECRET,
@@ -21,7 +23,7 @@ export async function POST(request: NextRequest) {
                 },
                 body: JSON.stringify({
                     consentDuration: {
-                        unit: "YEAR",
+                        unit: "MONTH",
                         value: 1,
                     },
                     frequency: {
@@ -29,12 +31,12 @@ export async function POST(request: NextRequest) {
                         value: 45,
                     },
                     dataRange: {
-                        from: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-                        to: new Date().toISOString(),
+                        from, to
                     },
-                    vua: mobile,
+
+                    vua: `${mobile}@finvu`,
                     fiTypes: ["DEPOSIT"],
-                    redirectUrl: "https://localhost:3000/setu-callback"
+                    redirectUrl: "http://localhost:3000/setu-callback"
                 }),
             }
         );
@@ -42,7 +44,10 @@ export async function POST(request: NextRequest) {
         const consentData = await consentResponse.json();
 
         if (consentData.url) {
-            return NextResponse.json({ redirectUrl: consentData.url });
+            return NextResponse.json({
+                redirectUrl: consentData.url,
+                dataRange: { from, to }
+            });
         } else {
             console.error("Setu consent error:", consentData);
             return NextResponse.json(

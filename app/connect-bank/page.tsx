@@ -25,6 +25,8 @@ export default function ConnectBank() {
       const data = await response.json();
 
       if (data.redirectUrl) {
+        localStorage.setItem("consentDateFrom", data.dataRange.from);
+        localStorage.setItem("consentDateTo", data.dataRange.to);
         window.location.href = data.redirectUrl;
       } else {
         setError("Something went wrong. Please try again.");

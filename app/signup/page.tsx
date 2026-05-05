@@ -45,7 +45,7 @@ export default function Signup() {
         } else {
             setMessage("Account created! Redirecting...");
             setTimeout(() => {
-                window.location.href = "/login";
+                window.location.href = "/connect-bank";
             }, 2000);
         }
     }

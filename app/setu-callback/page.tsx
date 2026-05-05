@@ -8,7 +8,7 @@ function CallbackContent() {
   const [status, setStatus] = useState("processing");
 
   useEffect(() => {
-    const consentId = searchParams.get("consentId");
+    const consentId = searchParams.get("id");
     const success = searchParams.get("success");
 
     if (success === "true" && consentId) {
@@ -25,7 +25,7 @@ function CallbackContent() {
         window.location.href = "/login";
         return;
       }
-
+      // Store Consent ID
       await supabase
         .from("consents")
         .upsert({
@@ -34,6 +34,19 @@ function CallbackContent() {
           status: "ACTIVE",
           created_at: new Date().toISOString(),
         });
+      // Fetch data from Setu
+      const response = await fetch("/api/setu/fetch-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          consentId,
+          from: localStorage.getItem("consentDateFrom"),
+          to: localStorage.getItem("consentDateTo"),
+        }),
+      });
+
+      const result = await response.json();
+      console.log("Fetch result:", result);
 
       setStatus("success");
 
@@ -71,7 +84,7 @@ function CallbackContent() {
             borderRadius: "50%",
             animation: "spin 1s linear infinite",
             marginBottom: "24px",
-          }}/>
+          }} />
           <h1 style={{ color: "#00DF82", fontSize: "22px", margin: "0 0 8px" }}>
             Connecting your bank...
           </h1>
